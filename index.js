@@ -11,33 +11,32 @@ app.use(express.json());
 
 const admin = require("firebase-admin");
 
-const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
+  "utf8"
+);
 const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(serviceAccount),
 });
 
 const verifyFBToken = async (req, res, next) => {
-    const token = req.headers.authorization;
+  const token = req.headers.authorization;
 
-    if (!token) {
-        return res.status(401).send({ message: 'unauthorize access' })
-    }
+  if (!token) {
+    return res.status(401).send({ message: "unauthorize access" });
+  }
 
-    try {
-        const idToken = token.split(' ')[1]
-        const decoded = await admin.auth().verifyIdToken(idToken)
-        console.log("decoded info", decoded)
-        req.decoded_email = decoded.email;
-        next();
-    }
-    catch (error) {
-        return res.status(401).send({ message: 'unauthorize access' })
-    }
-}
-
-
+  try {
+    const idToken = token.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    console.log("decoded info", decoded);
+    req.decoded_email = decoded.email;
+    next();
+  } catch (error) {
+    return res.status(401).send({ message: "unauthorize access" });
+  }
+};
 
 
 const uri = process.env.MONGODB_URI;
@@ -64,14 +63,19 @@ async function run() {
 
         userInfo.createdAt = new Date();
 
-        userInfo.role = 'donor';
-        userInfo.status = 'active';
+        userInfo.role = "donor";
+        userInfo.status = "active";
 
         const result = await userCollections.insertOne(userInfo);
         res.send(result);
       } catch (error) {
         res.status(500).send({ error: "Failed to add user" });
       }
+    });
+
+    app.get("/users", verifyFBToken, async (req, res) => {
+      const result = await userCollections.find().toArray();
+      res.status(200).send(result);
     });
 
     app.get("/users/role/:email", async (req, res) => {
@@ -83,35 +87,49 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/update/user/status", verifyFBToken, async (req, res) => {
+      const { email, status } = req.query;
+      const query = { email: email };
+
+      const updataStatus = {
+        $set: {
+          status: status,
+        },
+      };
+
+      const result = await userCollections.updateOne(query, updataStatus);
+
+      res.send(result);
+    });
+
     //Donation Request
-   app.post("/requests", verifyFBToken, async (req, res) => {
-  try {
-    const data = req.body;
-    data.createdAt = new Date();
+    app.post("/requests", verifyFBToken, async (req, res) => {
+      try {
+        const data = req.body;
+        data.createdAt = new Date();
 
-    const result = await requestsCollection.insertOne(data);
+        const result = await requestsCollection.insertOne(data);
 
-    res.send(result); 
-  } catch (error) {
-    res.status(500).send({ error: "Failed to add product" });
-  }
-});
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to add product" });
+      }
+    });
 
+    app.get("/manager/products/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { managerEmail: email };
+      const result = await productCollections.find(query).toArray();
 
-app.get('/manager/products/:email', async(req, res)=>{
-  const email = req.params.email;
-  const query = {managerEmail: email};
-  const result = await productCollections.find(query).toArray();
-
-  res.send(result);
-})
+      res.send(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
   } finally {
-    // client.close(); 
+    // client.close();
   }
 }
 
