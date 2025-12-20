@@ -40,8 +40,7 @@ const verifyFBToken = async (req, res, next) => {
 
 
 
-const uri =
-  "mongodb+srv://blood-donation-app:ks3cVoeE07xDJExT@cluster0.t8lhpna.mongodb.net/?appName=Cluster0";
+const uri = process.env.MONGODB_URI;
 
 const client = new MongoClient(uri, {
   serverApi: {
