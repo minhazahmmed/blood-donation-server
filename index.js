@@ -14,6 +14,7 @@ app.use(express.json());
 
 const admin = require("firebase-admin");
 
+
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
   "utf8"
 );
@@ -58,6 +59,7 @@ async function run() {
     const database = client.db("BloodDonationAppDB");
     const userCollections = database.collection("user");
     const requestsCollection = database.collection("request");
+    const paymentsCollection = database.collection('payments')
 
     app.post("/users", async (req, res) => {
       try {
@@ -176,12 +178,53 @@ res.send({url: session.url})
 })
 
 
-app.post('/success-payment', async(res, req)=> {
-  
-})
+app.post('/success-payment', async (req, res) => {
+    try {
+        const { session_id } = req.query;
+        
+        if (!session_id) {
+            return res.status(400).send({ message: "Session ID is required" });
+        }
 
+     
+        const session = await stripe.checkout.sessions.retrieve(session_id);
+        const transactionId = session.payment_intent;
 
+    
+        const isPaymentExist = await paymentsCollection.findOne({ transactionId });
+        if (isPaymentExist) {
+            return res.status(200).send({ 
+                message: "Payment already recorded", 
+                transactionId 
+            });
+        }
 
+    
+        if (session.payment_status === 'paid') {
+            const paymentInfo = {
+                amount: session.amount_total / 100,
+                currency: session.currency,
+                donorEmail: session.customer_email,
+                transactionId,
+                payment_status: session.payment_status,
+                paidAt: new Date(),
+            };
+
+            const result = await paymentsCollection.insertOne(paymentInfo);
+            res.send(result);
+        } else {
+            res.status(400).send({ message: "Payment status is not 'paid'" });
+        }
+
+    } catch (error) {
+       
+        if (error.code === 11000) {
+            return res.status(200).send({ message: "Duplicate entry, already recorded." });
+        }
+        console.error("Payment Success Error:", error);
+        res.status(500).send({ message: "Internal server error" });
+    }
+});
 
     await client.db("admin").command({ ping: 1 });
     console.log(
