@@ -143,6 +143,34 @@ async function run() {
 });
 
 
+app.get('/search-request', async(req, res)=>{
+  const {bloodGroup, district, upazila} = req.query;
+   const query = {};
+
+   if(!query){
+    return;
+   }
+   if(bloodGroup){
+    const fixed = bloodGroup.replace(/ /g, "+").trim();
+    query.bloodGroup = fixed;
+   }
+   if(district){
+    query.recipient_district = district;
+   }
+   if(upazila){
+    query.recipient_upazila = upazila
+   }
+
+    const result = await requestsCollection.find(query).toArray();
+    res.send(result)
+
+})
+
+
+
+
+
+
 // Payments
 
 app.post('/create-payment-checkout', async(req, res)=> {
