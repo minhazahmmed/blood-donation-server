@@ -67,7 +67,7 @@ async function run() {
 
         userInfo.createdAt = new Date();
 
-        userInfo.role = "donor";
+        userInfo.role =  "donor";
         userInfo.status = "active";
 
         const result = await userCollections.insertOne(userInfo);
