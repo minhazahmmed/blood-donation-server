@@ -129,7 +129,9 @@ async function run() {
             .skip(page * size) 
             .limit(size)
             .toArray();
-        res.send(result);
+        const totalRequest = await requestsCollection.countDocuments(query);
+        res.send({request: result, totalRequest});
+       
     } catch (error) {
         res.status(500).send({ message: "DB Error" });
     }
