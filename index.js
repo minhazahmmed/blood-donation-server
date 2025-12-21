@@ -115,20 +115,25 @@ async function run() {
       }
     });
 
-    app.get("/my-request", verifyFBToken, async (req, res) => {
-      const email = req.decoded_email;
-      const size = Number(req.query.size);
-      const page = Number(req.query.page);
+   app.get("/my-request", verifyFBToken, async (req, res) => {
+    const email = req.decoded_email;
+    
+    const size = parseInt(req.query.size) || 10; 
+    const page = parseInt(req.query.page) || 0; 
 
-      const query = { requester_email: email };
+    const query = { requester_email: email };
 
-      const result = await requestsCollection
-      .find(query)
-      .limit(size)
-      .skip(size * page)
-      .toArray();
-      res.send(result);
-    });
+    try {
+        const result = await requestsCollection
+            .find(query)
+            .skip(page * size) 
+            .limit(size)
+            .toArray();
+        res.send(result);
+    } catch (error) {
+        res.status(500).send({ message: "DB Error" });
+    }
+});
 
     await client.db("admin").command({ ping: 1 });
     console.log(
