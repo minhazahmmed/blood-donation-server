@@ -38,7 +38,6 @@ const verifyFBToken = async (req, res, next) => {
   }
 };
 
-
 const uri = process.env.MONGODB_URI;
 
 const client = new MongoClient(uri, {
@@ -116,26 +115,20 @@ async function run() {
       }
     });
 
-   
-    app.get('/my-request', verifyFBToken, async(req, res)=>{
+    app.get("/my-request", verifyFBToken, async (req, res) => {
       const email = req.decoded_email;
-      const limit = Number(req.query.limit);
-      const skip = Number(req.query.skip);
-      const query = {requester_email:email};
+      const size = Number(req.query.size);
+      const page = Number(req.query.page);
+
+      const query = { requester_email: email };
 
       const result = await requestsCollection
-      
-      
       .find(query)
-      .skip(skip)
-      .limit(limit)
+      .limit(size)
+      .skip(size * page)
       .toArray();
       res.send(result);
-    })
-
-
-
-
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
