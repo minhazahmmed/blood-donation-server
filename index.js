@@ -175,6 +175,14 @@ res.send({url: session.url})
 
 })
 
+
+app.post('/success-payment', async(res, req)=> {
+  
+})
+
+
+
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
