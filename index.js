@@ -167,10 +167,6 @@ app.get('/search-request', async(req, res)=>{
 })
 
 
-
-
-
-
 // Payments
 
 app.post('/create-payment-checkout', async(req, res)=> {
@@ -205,6 +201,7 @@ res.send({url: session.url})
 
 })
 
+// success payment
 
 app.post('/success-payment', async (req, res) => {
     try {
@@ -253,6 +250,34 @@ app.post('/success-payment', async (req, res) => {
         res.status(500).send({ message: "Internal server error" });
     }
 });
+
+
+// All Donation requests
+
+
+
+app.get("/all-pending-requests", async (req, res) => {
+    try {
+        const query = { donation_status: "pending" }; 
+        const result = await requestsCollection.find(query).sort({ createdAt: -1 }).toArray();
+        res.send(result);
+    } catch (error) {
+        res.status(500).send({ message: "Error fetching requests" });
+    }
+});
+
+
+app.get("/request/:id", async (req, res) => {
+    const id = req.params.id;
+    const { ObjectId } = require("mongodb");
+    const query = { _id: new ObjectId(id) };
+    const result = await requestsCollection.findOne(query);
+    res.send(result);
+});
+
+
+
+
 
     await client.db("admin").command({ ping: 1 });
     console.log(
