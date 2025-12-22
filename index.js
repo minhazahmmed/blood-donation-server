@@ -322,6 +322,40 @@ app.get('/search-donor', async (req, res) => {
     }
 });
 
+// ১. ইউজার অনুযায়ী শেষ ৩টি রিকোয়েস্ট (Dashboard Home এর জন্য)
+app.get("/my-requests-recent", verifyFBToken, async (req, res) => {
+    const email = req.decoded_email;
+    const query = { requester_email: email };
+    const result = await requestsCollection.find(query).sort({ createdAt: -1 }).limit(3).toArray();
+    res.send(result);
+});
+
+// ২. স্ট্যাটাস পরিবর্তন (Done/Canceled করার জন্য)
+app.patch("/requests/status/:id", verifyFBToken, async (req, res) => {
+    const id = req.params.id;
+    const { status } = req.body;
+    const { ObjectId } = require("mongodb");
+    const query = { _id: new ObjectId(id) };
+    const updatedDoc = { $set: { donation_status: status } };
+    const result = await requestsCollection.updateOne(query, updatedDoc);
+    res.send(result);
+});
+
+// ৩. রিকোয়েস্ট ডিলিট করা
+app.delete("/requests/:id", verifyFBToken, async (req, res) => {
+    const id = req.params.id;
+    const { ObjectId } = require("mongodb");
+    const result = await requestsCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+});
+
+
+
+
+
+
+
+// ...........................................................
 
     await client.db("admin").command({ ping: 1 });
     console.log(
