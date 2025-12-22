@@ -266,6 +266,7 @@ app.get("/all-pending-requests", async (req, res) => {
     }
 });
 
+// View specific donation request by id
 
 app.get("/request/:id", async (req, res) => {
     const id = req.params.id;
@@ -277,6 +278,49 @@ app.get("/request/:id", async (req, res) => {
 
 
 
+// Set Donation request API
+
+app.patch("/requests/donate/:id", async (req, res) => {
+    const id = req.params.id;
+    const { donorName, donorEmail, status } = req.body;
+    const { ObjectId } = require("mongodb");
+    
+    const query = { _id: new ObjectId(id) };
+    const updatedDoc = {
+        $set: {
+            donor_name: donorName,
+            donor_email: donorEmail,
+            donation_status: status,
+        },
+    };
+
+    try {
+        const result = await requestsCollection.updateOne(query, updatedDoc);
+        res.send(result);
+    } catch (error) {
+        res.status(500).send({ message: "Failed to update status" });
+    }
+});
+
+
+// Search Donors
+
+app.get('/search-donor', async (req, res) => {
+    const { bloodGroup, district, upazila } = req.query;
+    const query = {};
+
+    
+    if (bloodGroup && bloodGroup !== "") query.blood = bloodGroup;
+    if (district && district !== "") query.district = district;
+    if (upazila && upazila !== "") query.upazila = upazila;
+
+    try {
+        const result = await userCollections.find(query).toArray();
+        res.send(result);
+    } catch (error) {
+        res.status(500).send({ message: "Search Error" });
+    }
+});
 
 
     await client.db("admin").command({ ping: 1 });
