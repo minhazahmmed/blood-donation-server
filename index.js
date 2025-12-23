@@ -61,8 +61,7 @@ async function run() {
     const paymentsCollection = database.collection('payments');
 
     // --- User APIs ---
-    
-   
+
     app.get("/user/:email", verifyFBToken, async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
@@ -97,10 +96,53 @@ async function run() {
       res.send(result);
     });
 
+    // ১. ইউজার স্ট্যাটাস আপডেট (Block/Unblock) - Self-action Protection
     app.patch("/update/user/status", verifyFBToken, async (req, res) => {
       const { email, status } = req.query;
+      const requesterEmail = req.decoded_email;
+
+      if (email === requesterEmail) {
+        return res.status(403).send({ message: "Access Denied: You cannot block yourself!" });
+      }
+
       const result = await userCollections.updateOne({ email }, { $set: { status } });
       res.send(result);
+    });
+
+    // ২. ইউজার রোল আপডেট (Admin/Volunteer/Donor) - Self-action Protection
+    app.patch("/update/user/role", verifyFBToken, async (req, res) => {
+      const { email, role } = req.query;
+      const requesterEmail = req.decoded_email;
+
+      if (email === requesterEmail) {
+        return res.status(403).send({ message: "Access Denied: You cannot change your own role!" });
+      }
+
+      const result = await userCollections.updateOne({ email }, { $set: { role } });
+      res.send(result);
+    });
+
+    // ৩. অ্যাডমিন ড্যাশবোর্ড স্ট্যাটিস্টিকস
+    app.get("/admin-stats", verifyFBToken, async (req, res) => {
+      try {
+        const totalUsers = await userCollections.countDocuments();
+        const totalRequests = await requestsCollection.countDocuments();
+        
+        // MongoDB Aggregation ব্যবহার করে সরাসরি যোগফল বের করা (বেশি ফাস্ট)
+        const fundingResult = await paymentsCollection.aggregate([
+            { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]).toArray();
+        
+        const totalFunding = fundingResult.length > 0 ? fundingResult[0].total : 0;
+
+        res.send({
+          totalUsers,
+          totalRequests,
+          totalFunding
+        });
+      } catch (error) {
+        res.status(500).send({ message: "Failed to fetch statistics" });
+      }
     });
 
     // প্রোফাইল আপডেট এপিআই
