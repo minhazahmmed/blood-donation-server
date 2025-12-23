@@ -155,6 +155,40 @@ async function run() {
       res.send(result);
     });
 
+
+    app.get('/search-donors', async (req, res) => {
+    try {
+        const { bloodGroup, district, upazila } = req.query;
+        
+        // ডিফল্টভাবে শুধু একটিভ ডোনারদের খুঁজবে
+        const query = { 
+            role: "donor", 
+            status: "active" 
+        };
+
+        // ড্রপডাউন থেকে আসা ব্লাড গ্রুপ (A+, B+ ইত্যাদি) হ্যান্ডেল করা
+        if (bloodGroup && bloodGroup !== "undefined") {
+            query.blood = bloodGroup; 
+        }
+        
+        if (district && district !== "") {
+            query.district = district;
+        }
+        
+        if (upazila && upazila !== "") {
+            query.upazila = upazila;
+        }
+
+        const result = await userCollections.find(query).toArray();
+        res.send(result);
+    } catch (error) {
+        res.status(500).send({ message: "Search failed", error });
+    }
+});
+
+
+
+
     // সব রিকোয়েস্ট দেখার এপিআই (Admin/Volunteer এর জন্য)
     app.get("/all-requests", verifyFBToken, async (req, res) => {
       const result = await requestsCollection.find().sort({ createdAt: -1 }).toArray();
@@ -172,15 +206,6 @@ async function run() {
       res.send({ request: result, totalRequest });
     });
 
-    app.get('/search-request', async (req, res) => {
-      const { bloodGroup, district, upazila } = req.query;
-      const query = {};
-      if (bloodGroup) query.bloodGroup = bloodGroup.replace(/ /g, "+").trim();
-      if (district) query.recipient_district = district;
-      if (upazila) query.recipient_upazila = upazila;
-      const result = await requestsCollection.find(query).toArray();
-      res.send(result);
-    });
 
     // --- Stripe Payment APIs ---
     app.post('/create-payment-checkout', async (req, res) => {
