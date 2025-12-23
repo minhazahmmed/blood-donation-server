@@ -1,3 +1,4 @@
 node_modules
 .env
 blood-donation-id.json
+.vercel

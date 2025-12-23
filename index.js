@@ -9,7 +9,15 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET);
 const crypto = require('crypto');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173", 
+    "https://blood-donation-project-mongodb.web.app", 
+    "https://blood-donation-project-mongodb.firebaseapp.com"
+  ],
+  credentials: true
+}));
+
 app.use(express.json());
 
 const admin = require("firebase-admin");
@@ -54,7 +62,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     const database = client.db("BloodDonationAppDB");
     const userCollections = database.collection("user");
@@ -322,7 +330,7 @@ app.get('/search-donor', async (req, res) => {
     }
 });
 
-// ১. ইউজার অনুযায়ী শেষ ৩টি রিকোয়েস্ট (Dashboard Home এর জন্য)
+
 app.get("/my-requests-recent", verifyFBToken, async (req, res) => {
     const email = req.decoded_email;
     const query = { requester_email: email };
@@ -330,7 +338,7 @@ app.get("/my-requests-recent", verifyFBToken, async (req, res) => {
     res.send(result);
 });
 
-// ২. স্ট্যাটাস পরিবর্তন (Done/Canceled করার জন্য)
+
 app.patch("/requests/status/:id", verifyFBToken, async (req, res) => {
     const id = req.params.id;
     const { status } = req.body;
@@ -341,7 +349,7 @@ app.patch("/requests/status/:id", verifyFBToken, async (req, res) => {
     res.send(result);
 });
 
-// ৩. রিকোয়েস্ট ডিলিট করা
+
 app.delete("/requests/:id", verifyFBToken, async (req, res) => {
     const id = req.params.id;
     const { ObjectId } = require("mongodb");
@@ -350,14 +358,40 @@ app.delete("/requests/:id", verifyFBToken, async (req, res) => {
 });
 
 
+// Get specific user by email
+app.get("/user/:email", verifyFBToken, async (req, res) => {
+    const email = req.params.email;
+    const result = await userCollections.findOne({ email });
+    res.send(result);
+});
 
+// Update user profile
+
+app.patch("/user/update/:email", verifyFBToken, async (req, res) => {
+    const email = req.params.email;
+    const { name, photoURL, district, upazila, blood } = req.body; 
+    const query = { email: email };
+    
+    const updatedDoc = {
+        $set: {
+            ...(name && { name }),
+            ...(photoURL && { photoURL }),
+            ...(district && { district }),
+            ...(upazila && { upazila }),
+            ...(blood && { blood }),
+        },
+    };
+
+    const result = await userCollections.updateOne(query, updatedDoc);
+    res.send(result);
+});
 
 
 
 
 // ...........................................................
 
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
