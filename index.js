@@ -96,56 +96,40 @@ async function run() {
       res.send(result);
     });
 
-    // ১. ইউজার স্ট্যাটাস আপডেট (Block/Unblock) - Self-action Protection
     app.patch("/update/user/status", verifyFBToken, async (req, res) => {
       const { email, status } = req.query;
       const requesterEmail = req.decoded_email;
-
       if (email === requesterEmail) {
         return res.status(403).send({ message: "Access Denied: You cannot block yourself!" });
       }
-
       const result = await userCollections.updateOne({ email }, { $set: { status } });
       res.send(result);
     });
 
-    // ২. ইউজার রোল আপডেট (Admin/Volunteer/Donor) - Self-action Protection
     app.patch("/update/user/role", verifyFBToken, async (req, res) => {
       const { email, role } = req.query;
       const requesterEmail = req.decoded_email;
-
       if (email === requesterEmail) {
         return res.status(403).send({ message: "Access Denied: You cannot change your own role!" });
       }
-
       const result = await userCollections.updateOne({ email }, { $set: { role } });
       res.send(result);
     });
 
-    // ৩. অ্যাডমিন ড্যাশবোর্ড স্ট্যাটিস্টিকস
     app.get("/admin-stats", verifyFBToken, async (req, res) => {
       try {
         const totalUsers = await userCollections.countDocuments();
         const totalRequests = await requestsCollection.countDocuments();
-        
-        // MongoDB Aggregation ব্যবহার করে সরাসরি যোগফল বের করা (বেশি ফাস্ট)
         const fundingResult = await paymentsCollection.aggregate([
             { $group: { _id: null, total: { $sum: "$amount" } } }
         ]).toArray();
-        
         const totalFunding = fundingResult.length > 0 ? fundingResult[0].total : 0;
-
-        res.send({
-          totalUsers,
-          totalRequests,
-          totalFunding
-        });
+        res.send({ totalUsers, totalRequests, totalFunding });
       } catch (error) {
         res.status(500).send({ message: "Failed to fetch statistics" });
       }
     });
 
-    // প্রোফাইল আপডেট এপিআই
     app.patch("/user/update/:email", verifyFBToken, async (req, res) => {
       const email = req.params.email;
       const updatedData = req.body;
@@ -171,12 +155,17 @@ async function run() {
       res.send(result);
     });
 
+    // সব রিকোয়েস্ট দেখার এপিআই (Admin/Volunteer এর জন্য)
+    app.get("/all-requests", verifyFBToken, async (req, res) => {
+      const result = await requestsCollection.find().sort({ createdAt: -1 }).toArray();
+      res.send(result);
+    });
+
     app.get("/my-request", verifyFBToken, async (req, res) => {
       const email = req.decoded_email;
       const size = parseInt(req.query.size) || 10;
       const page = parseInt(req.query.page) || 0;
       const query = { requester_email: email };
-
       const result = await requestsCollection.find(query)
         .skip(page * size).limit(size).toArray();
       const totalRequest = await requestsCollection.countDocuments(query);
@@ -198,7 +187,6 @@ async function run() {
       const info = req.body;
       const amount = parseInt(info.donateAmount) * 100;
       const domain = process.env.SITE_DOMAIN || "http://localhost:5173";
-
       const session = await stripe.checkout.sessions.create({
         line_items: [{
           price_data: {
@@ -221,13 +209,10 @@ async function run() {
       try {
         const { session_id } = req.query;
         if (!session_id) return res.status(400).send({ message: "No session ID" });
-
         const session = await stripe.checkout.sessions.retrieve(session_id);
         const transactionId = session.payment_intent;
-
         const isExist = await paymentsCollection.findOne({ transactionId });
         if (isExist) return res.send({ message: "Already recorded", transactionId });
-
         if (session.payment_status === 'paid') {
           const paymentInfo = {
             amount: session.amount_total / 100,
@@ -256,6 +241,13 @@ async function run() {
       res.send(result);
     });
 
+    // রিকোয়েস্ট ডিলিট (Admin Only)
+    app.delete("/request/delete/:id", verifyFBToken, async (req, res) => {
+      const result = await requestsCollection.deleteOne({ _id: new ObjectId(req.params.id) });
+      res.send(result);
+    });
+
+    // রিকোয়েস্ট স্ট্যাটাস বা ইনফো আপডেট
     app.patch("/requests/donate/:id", async (req, res) => {
       const { donorName, donorEmail, status } = req.body;
       const result = await requestsCollection.updateOne(
@@ -278,7 +270,7 @@ async function run() {
 
     console.log("Successfully connected to MongoDB!");
   } finally {
-    // keeping client open
+    // client open
   }
 }
 run().catch(console.dir);
