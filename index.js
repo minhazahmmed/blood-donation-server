@@ -61,6 +61,18 @@ async function run() {
     const paymentsCollection = database.collection('payments');
 
     // --- User APIs ---
+    
+   
+    app.get("/user/:email", verifyFBToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await userCollections.findOne(query);
+      if (!result) {
+        return res.status(404).send({ message: "User not found" });
+      }
+      res.send(result);
+    });
+
     app.post("/users", async (req, res) => {
       try {
         const userInfo = req.body;
@@ -88,6 +100,24 @@ async function run() {
     app.patch("/update/user/status", verifyFBToken, async (req, res) => {
       const { email, status } = req.query;
       const result = await userCollections.updateOne({ email }, { $set: { status } });
+      res.send(result);
+    });
+
+    // প্রোফাইল আপডেট এপিআই
+    app.patch("/user/update/:email", verifyFBToken, async (req, res) => {
+      const email = req.params.email;
+      const updatedData = req.body;
+      const query = { email: email };
+      const updatedDoc = {
+        $set: {
+          name: updatedData.name,
+          photoURL: updatedData.photoURL,
+          blood: updatedData.blood,
+          district: updatedData.district,
+          upazila: updatedData.upazila
+        }
+      };
+      const result = await userCollections.updateOne(query, updatedDoc);
       res.send(result);
     });
 
