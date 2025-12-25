@@ -315,7 +315,7 @@ run().catch(console.dir);
 app.get("/", (req, res) => res.send("Blood Donation Server is Running"));
 
 // Vercel deployment fix
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(port, () => console.log(`Server on port ${port}`));
-}
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});
 module.exports = app;
