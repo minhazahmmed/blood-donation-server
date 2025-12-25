@@ -110,6 +110,36 @@ async function run() {
       res.send(result);
     });
 
+    // --- নতুন প্রোফাইল আপডেট রাউট যোগ করুন ---
+app.patch("/user/update/:email", verifyFBToken, async (req, res) => {
+  const email = req.params.email;
+  const updatedData = req.body;
+  
+
+  const requesterEmail = req.decoded_email;
+  if (email !== requesterEmail) {
+    return res.status(403).send({ message: "Forbidden access" });
+  }
+
+  const query = { email: email };
+  const updateDoc = {
+    $set: {
+      name: updatedData.name,
+      photoURL: updatedData.photoURL,
+      blood: updatedData.blood,
+      district: updatedData.district,
+      upazila: updatedData.upazila
+    }
+  };
+
+  try {
+    const result = await userCollections.updateOne(query, updateDoc);
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Update failed" });
+  }
+});
+
     app.get("/admin-stats", verifyFBToken, async (req, res) => {
       try {
         const totalUsers = await userCollections.countDocuments();
@@ -224,6 +254,26 @@ async function run() {
       const result = await blogCollection.deleteOne({ _id: new ObjectId(req.params.id) });
       res.send(result);
     });
+
+
+    // --- Volunteer Stats API ---
+app.get("/volunteer-stats", verifyFBToken, async (req, res) => {
+  try {
+    const totalRequests = await requestsCollection.countDocuments();
+    const pendingRequests = await requestsCollection.countDocuments({ donation_status: "pending" });
+    const doneRequests = await requestsCollection.countDocuments({ donation_status: "done" });
+    
+    // ভলান্টিয়ারের নিজের লেখা ড্রাফট ব্লগ সংখ্যা
+    const myDraftBlogs = await blogCollection.countDocuments({ 
+      authorEmail: req.decoded_email, 
+      status: "draft" 
+    });
+
+    res.send({ totalRequests, pendingRequests, doneRequests, myDraftBlogs });
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch volunteer stats" });
+  }
+});
 
     // --- Extra Functionalities ---
     app.get("/all-pending-requests", async (req, res) => {
