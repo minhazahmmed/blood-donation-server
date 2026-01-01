@@ -82,16 +82,32 @@ app.get("/user/:email", verifyFBToken, async (req, res) => {
 app.post("/users", async (req, res) => {
   try {
     const userInfo = req.body;
-    userInfo.createdAt = new Date();
-    userInfo.role = "donor";
-    userInfo.status = "active";
-    const result = await userCollections.insertOne(userInfo);
+    const query = { email: userInfo.email };
+    const existingUser = await userCollections.findOne(query);
+
+    if (existingUser) {
+      return res.send({ message: "User exists", insertedId: null });
+    }
+
+   
+    const newUser = {
+      name: userInfo.name,
+      email: userInfo.email,
+      photoURL: userInfo.photoURL || userInfo.image, 
+      blood: userInfo.blood || "", 
+      district: userInfo.district || "",
+      upazila: userInfo.upazila || "",
+      role: "donor",
+      status: "active",
+      createdAt: new Date()
+    };
+
+    const result = await userCollections.insertOne(newUser);
     res.send(result);
   } catch (error) {
-    res.status(500).send({ error: "Failed to add user" });
+    res.status(500).send({ error: "Failed to sync user" });
   }
 });
-
 app.get("/users", verifyFBToken, async (req, res) => {
   const result = await userCollections.find().toArray();
   res.status(200).send(result);
